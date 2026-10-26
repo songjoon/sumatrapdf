@@ -1953,6 +1953,7 @@ static void ReplaceDocumentInCurrentTab(LoadArgs* args, DocController* ctrl, Fil
             // (physical-size) CustomScreenDPI used for zoom
             dm->SetUiDpi(win->frameDpi > 0 ? win->frameDpi : DpiGetForHwnd(win->hwndFrame));
             if (fs) {
+                dm->SetBookStartPage(fs->bookStartPage);
                 dm->SetUniformPageWidth(fs->uniformPageWidth);
                 dm->SetTrimEmptyMargins(fs->trimEmptyMargins);
                 dm->SetFreePan(fs->freePan);
@@ -7999,7 +8000,7 @@ void ExitFullScreen(MainWindow* win) {
 }
 
 void AdvanceFocus(MainWindow* win) {
-    // Tab order: Frame -> Chapter -> Page -> Find -> ToC -> Favorites -> Frame -> ...
+    // Tab order: Frame -> Chapter -> Page -> Book start -> ToC -> Favorites -> Frame.
 
     bool hasToolbar = !win->isFullScreen && !win->presentation && gSettings->showToolbar && win->IsDocLoaded();
     int direction = IsShiftPressed() ? -1 : 1;
@@ -8012,6 +8013,10 @@ void AdvanceFocus(MainWindow* win) {
     }
     if (hasToolbar && win->pageEdit) {
         tabOrder[nWindows++] = win->pageEdit->hwnd;
+    }
+    if (hasToolbar && win->toolbarVirt && win->toolbarVirt->bookStartEdit &&
+        win->toolbarVirt->bookStartEdit->GetVisibility() == Visibility::Visible) {
+        tabOrder[nWindows++] = win->toolbarVirt->bookStartEdit->hwnd;
     }
     // note: the find edit is no longer in the toolbar tab order; it lives in the
     // floating findBar and is reached via Ctrl+F / the search toolbar icon
@@ -13727,6 +13732,9 @@ static void SetTabState(WindowTab* tab, TabState* state) {
     auto* win = tab->win;
     DocController* ctrl = tab->ctrl;
     DisplayModel* dm = tab->AsFixed();
+    if (dm) {
+        dm->SetBookStartPage(state->bookStartPage);
+    }
 
     // validate page number from session state
     // TODO: figure out how this happens in the first place i.e.

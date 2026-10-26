@@ -136,6 +136,8 @@ struct DisplayModel : DocController {
     TempStr GetPageLabeTemp(int pageNo) const override;
     int GetPageByLabel(Str label) const override;
     int LogicalPageCount() const;
+    void SetBookStartPage(int pageNo);
+    int bookStartPage = 0;
 
     bool ValidPageNo(int pageNo) const override;
     bool GoToNextPage() override;

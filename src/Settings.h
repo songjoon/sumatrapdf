@@ -303,6 +303,8 @@ struct FileState {
     // number of pages in the document when it was last open; 0 if unknown.
     // Used to show reading progress on the home page
     int pageCount;
+    // file page corresponding to book page 1; 0 uses document page labels
+    int bookStartPage;
     // how far pages have been rotated as a multiple of 90 degrees
     int rotation;
     // brightness of rendered pages, -100 to 100; 0 leaves them unchanged.
@@ -357,6 +359,8 @@ struct TabState {
     Str filePath;
     // layout of pages in this tab
     Str displayMode;
+    // file page corresponding to book page 1; 0 uses document page labels
+    int bookStartPage;
     // number of the last read page, or `bm:<bookmark>` for documents with
     // chapters (see PagePosition.cpp)
     Str pageNo;
@@ -1335,7 +1339,7 @@ struct FieldInfo;
 struct StructInfo;
 extern const StructInfo gFavoriteInfo;
 extern const StructInfo gFileEBookUIInfo;
-extern const FieldInfo gFileStateFields[28];
+extern const FieldInfo gFileStateFields[29];
 extern StructInfo gFileStateInfo;
 extern const StructInfo gTabStateInfo;
 extern const StructInfo gSessionDataInfo;

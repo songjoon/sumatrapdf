@@ -1160,6 +1160,7 @@ const fileState: Field[] = [
   compactStruct("ScrollPos", scrollPos, "how far this document has been scrolled (in x and y direction)").structName(
     "PointF",
   ),
+  field("BookStartPage", Int, 0, "file page corresponding to book page 1; 0 uses document page labels"),
   field(
     "PageNo",
     Str,
@@ -1266,6 +1267,7 @@ const fileStateLayout = [
   "OpenCount",
   "PageNo",
   "PageCount",
+  "BookStartPage",
   "Rotation",
   "Brightness",
   "Contrast",
@@ -1289,6 +1291,7 @@ fileState.sort((a, b) => fileStateLayout.indexOf(a.Name) - fileStateLayout.index
 const tabState: Field[] = [
   field("FilePath", Str, null, "path of the document"),
   field("DisplayMode", Str, "automatic", "layout of pages in this tab").enum(kDisplayModes),
+  field("BookStartPage", Int, 0, "file page corresponding to book page 1; 0 uses document page labels"),
   field(
     "PageNo",
     Str,
