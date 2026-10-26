@@ -73,7 +73,10 @@ export async function testit(): Promise<void> {
   try {
     await first.client.waitForRenderIdle();
     const edits = pageEdits(first.frame);
+    assert.equal(getControlText(edits.start), "1", "book start defaults to 1");
     assert.equal(getControlText(edits.page), "i", "native PDF labels are initially preserved");
+    enter(edits.start, "0");
+    assert.equal(getControlText(edits.start), "1", "legacy automatic value normalizes to 1");
     enter(edits.start, "13");
     enter(edits.page, "1");
     assert.equal(await physicalPage(first.client), 13, "book page 1 maps to file page 13");
@@ -106,7 +109,7 @@ export async function testit(): Promise<void> {
       enter(edits.page, invalid);
       assert.equal(await physicalPage(first.client), 20, `reject book page ${invalid} with negative start`);
     }
-    enter(edits.start, "0");
+    enter(edits.start, "1");
     enter(edits.page, "i");
     assert.equal(await physicalPage(first.client), 1, "reset restores native PDF labels");
     enter(edits.start, "-5");
@@ -122,7 +125,7 @@ export async function testit(): Promise<void> {
   }
   assert.match(readFileSync(settings, "utf8"), /BookStartPage\s*=\s*-5\b/, "negative start saved per document");
 
-  const reopened = await launchControlled(["-appdata", appdata, pdf]);
+  const reopened = await launchControlled(["-appdata", appdata, pdf], { saveSettings: true });
   try {
     await reopened.client.waitForRenderIdle();
     const edits = pageEdits(reopened.frame);
@@ -130,11 +133,27 @@ export async function testit(): Promise<void> {
     assert.equal(getControlText(edits.page), "7", "logical page survives reopening");
     enter(edits.page, "8");
     assert.equal(await physicalPage(reopened.client), 2, "restored negative mapping controls navigation");
+    enter(edits.start, "1");
+    enter(edits.page, "i");
+    assert.equal(await physicalPage(reopened.client), 1, "1 restores the original page numbering");
     await reopened.client.quit();
     assert.ok(await waitForExit(reopened.proc));
   } finally {
     reopened.client.close();
     if (reopened.proc.exitCode === null) await killAndWait(reopened.proc);
+  }
+  assert.match(readFileSync(settings, "utf8"), /BookStartPage\s*=\s*1\b/, "default 1 is saved");
+  const reset = await launchControlled(["-appdata", appdata, pdf]);
+  try {
+    await reset.client.waitForRenderIdle();
+    const edits = pageEdits(reset.frame);
+    assert.equal(getControlText(edits.start), "1", "default 1 survives reopening");
+    assert.equal(getControlText(edits.page), "i", "original labels survive resetting to 1");
+    await reset.client.quit();
+    assert.ok(await waitForExit(reset.proc));
+  } finally {
+    reset.client.close();
+    if (reset.proc.exitCode === null) await killAndWait(reset.proc);
   }
   console.log("Book page mapping, boundaries, native labels and persistence passed.");
 }

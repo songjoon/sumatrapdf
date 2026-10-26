@@ -91,6 +91,8 @@ struct Synchronizer;
    API and re-displaying things based on new display information */
 enum class HeadingTocStart;
 
+constexpr int kDefaultBookStartPage = 1;
+
 struct DisplayModel : DocController {
     DisplayModel(EngineBase* engine, DocControllerCallback* cb);
     DisplayModel(DisplayModel const&) = delete;
@@ -137,7 +139,7 @@ struct DisplayModel : DocController {
     int GetPageByLabel(Str label) const override;
     int LogicalPageCount() const;
     void SetBookStartPage(int pageNo);
-    int bookStartPage = 0;
+    int bookStartPage = kDefaultBookStartPage;
 
     bool ValidPageNo(int pageNo) const override;
     bool GoToNextPage() override;

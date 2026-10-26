@@ -794,7 +794,7 @@ const FieldInfo gFileStateFields[] = {
     {offsetof(FileState, openCount), SettingType::Int, 0},
     {offsetof(FileState, pageNo), SettingType::String, (intptr_t)"1"},
     {offsetof(FileState, pageCount), SettingType::Int, 0},
-    {offsetof(FileState, bookStartPage), SettingType::Int, 0},
+    {offsetof(FileState, bookStartPage), SettingType::Int, 1},
     {offsetof(FileState, rotation), SettingType::Int, 0},
     {offsetof(FileState, brightness), SettingType::Int, 0},
     {offsetof(FileState, contrast), SettingType::Int, 0},
@@ -828,7 +828,7 @@ StructInfo gFileStateInfo = {
     "given, overrides the tab color for this document\0number of times this document has been opened recently\0number "
     "of the last read page, or `bm:<bookmark>` for documents with chapters (folds in ReparseIdx; see "
     "PagePosition.cpp)\0number of pages in the document when it was last open; 0 if unknown. Used to show reading "
-    "progress on the home page\0file page corresponding to book page 1; 0 uses document page labels\0how far pages "
+    "progress on the home page\0file page corresponding to book page 1; 1 uses document page labels\0how far pages "
     "have been rotated as a multiple of 90 degrees\0brightness of rendered pages, -100 to 100; 0 leaves them "
     "unchanged. Set with CmdAdjustBrightness\0contrast of rendered pages, -100 to 100; 0 leaves them unchanged. Set "
     "with CmdAdjustContrast\0state of the window. 1 is normal, 2 is maximized, 3 is fullscreen, 4 is minimized\0width "
@@ -863,7 +863,7 @@ static const FieldInfo gTabStateFields[] = {
     {offsetof(TabState, filePath), SettingType::String, 0},
     {offsetof(TabState, displayMode), SettingType::String, (intptr_t)"automatic", false, gEnumTabStateDisplayMode,
      nullptr},
-    {offsetof(TabState, bookStartPage), SettingType::Int, 0},
+    {offsetof(TabState, bookStartPage), SettingType::Int, 1},
     {offsetof(TabState, pageNo), SettingType::String, (intptr_t)"1"},
     {offsetof(TabState, zoom), SettingType::String, (intptr_t)"fit page"},
     {offsetof(TabState, rotation), SettingType::Int, 0},
@@ -877,7 +877,7 @@ const StructInfo gTabStateInfo = {
     10,
     gTabStateFields,
     "FilePath\0DisplayMode\0BookStartPage\0PageNo\0Zoom\0Rotation\0ScrollPos\0ShowToc\0SidebarView\0TocState",
-    "path of the document\0layout of pages in this tab\0file page corresponding to book page 1; 0 uses document page "
+    "path of the document\0layout of pages in this tab\0file page corresponding to book page 1; 1 uses document page "
     "labels\0number of the last read page, or `bm:<bookmark>` for documents with chapters (see PagePosition.cpp)\0zoom "
     "(in %) or one of those values: fit page, fit width, fit height, fit content, fit visible\0how far pages have been "
     "rotated as a multiple of 90 degrees\0how far this document has been scrolled (in x and y direction)\0if true, the "

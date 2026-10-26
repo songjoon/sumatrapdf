@@ -737,7 +737,7 @@ void UpdateToolbarPageText(MainWindow* win, int pageCount, bool updateOnly) {
             chapterVisChanged = true;
         }
         if (!tb->bookStartEdit->IsFocused()) {
-            tb->bookStartEdit->SetText(fmt("%d", bookModel ? bookModel->bookStartPage : 0));
+            tb->bookStartEdit->SetText(fmt("%d", bookModel ? bookModel->bookStartPage : kDefaultBookStartPage));
         }
     }
     if (win->chapterEdit && win->chapterEdit->GetVisibility() != chapterVis) {
@@ -773,7 +773,7 @@ void UpdateToolbarPageText(MainWindow* win, int pageCount, bool updateOnly) {
         if (dm) {
             logical = dm->LogicalPageCount();
         }
-        if (logical > 0 && (logical != pageCount || (dm && dm->bookStartPage != 0))) {
+        if (logical > 0 && (logical != pageCount || (dm && dm->bookStartPage != kDefaultBookStartPage))) {
             txt = fmt(" / %d (%d / %d)", logical, win->ctrl->CurrentPageNo(), pageCount);
         } else {
             txt = fmt("%d / %d", win->ctrl->CurrentPageNo(), pageCount);
@@ -2661,7 +2661,7 @@ static void BuildToolbarLayout(MainWindow* win) {
             bookLabel->SetColor(kColText, fg);
             bookLabel->padding = {0, pageGap, 0, DpiScale(4)};
             bookLabel->id = PageInfoId;
-            bookLabel->SetTooltip(Tr("File page for book page 1 (0 = automatic). Press Enter to apply."));
+            bookLabel->SetTooltip(Tr("File page for book page 1 (default: 1). Press Enter to apply."));
             tb->bookStartLabel = bookLabel;
             box->AddChild(bookLabel);
             tb->bookStartEdit = ToolbarCreateBookStart(win, tb->platformFont, tb->iconSize);
@@ -3009,7 +3009,7 @@ static void OnBookStartChar(MainWindow* win, Edit::CharEvent* ev) {
         int start = 0;
         Str text = tb->bookStartEdit->GetTextTemp();
         if (str::IsNull(str::Parse(text, "%d%$", &start)) || start > dm->PageCount() ||
-            (i64)dm->PageCount() - start + 1 > INT_MAX) {
+            (start != 0 && (i64)dm->PageCount() - start + 1 > INT_MAX)) {
             MessageBeep(MB_ICONWARNING);
             EditSelectAll(tb->bookStartEdit);
             ev->didHandle = true;

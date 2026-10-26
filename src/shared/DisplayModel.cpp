@@ -149,18 +149,18 @@ void DisplayModel::CreateThumbnail(Size size, const OnBitmapRendered* saveThumbn
 
 // page labels (optional)
 bool DisplayModel::HasPageLabels() const {
-    return bookStartPage != 0 || engine->hasPageLabels;
+    return bookStartPage != kDefaultBookStartPage || engine->hasPageLabels;
 }
 
 TempStr DisplayModel::GetPageLabeTemp(int pageNo) const {
-    if (bookStartPage != 0) {
+    if (bookStartPage != kDefaultBookStartPage) {
         return fmt("%d", pageNo - bookStartPage + 1);
     }
     return engine->GetPageLabeTemp(pageNo);
 }
 
 int DisplayModel::GetPageByLabel(Str label) const {
-    if (bookStartPage != 0) {
+    if (bookStartPage != kDefaultBookStartPage) {
         int bookPage = 0;
         if (str::IsNull(str::Parse(label, "%d%$", &bookPage))) {
             return 0;
@@ -173,12 +173,17 @@ int DisplayModel::GetPageByLabel(Str label) const {
 
 // Book page 1 can follow covers and front matter; physical navigation stays unchanged.
 void DisplayModel::SetBookStartPage(int pageNo) {
+    if (pageNo == 0) {
+        pageNo = kDefaultBookStartPage;
+    }
     i64 lastBookPage = (i64)engine->PageCount() - pageNo + 1;
-    bookStartPage = !engine->HasChapters() && pageNo <= engine->PageCount() && lastBookPage <= INT_MAX ? pageNo : 0;
+    bookStartPage = !engine->HasChapters() && pageNo <= engine->PageCount() && lastBookPage <= INT_MAX
+                        ? pageNo
+                        : kDefaultBookStartPage;
 }
 
 int DisplayModel::LogicalPageCount() const {
-    if (bookStartPage != 0) {
+    if (bookStartPage != kDefaultBookStartPage) {
         return PageCount() - bookStartPage + 1;
     }
     if (!engine) {
