@@ -18,7 +18,8 @@ later: entering **-5** makes file page 1 appear as book page 7.
 The total shows the final book page number and the current physical file position.
 Front matter remains accessible using zero and negative page numbers. Setting
 **Book 1 at:** to **0** restores the document's original page labels. Escape
-discards an unfinished edit. Values outside the file's page range are rejected.
+discards an unfinished edit. Values after the last file page, malformed input,
+and mappings that overflow the page-number range are rejected.
 
 The mapping is saved per document and in session tabs, subject to the existing
 history and per-document state preferences. It changes display and navigation
