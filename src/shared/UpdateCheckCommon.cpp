@@ -91,8 +91,6 @@ UpdateInfo* ParseUpdateInfo(Str d) {
     }
     AutoDelete delRoot(root);
 
-    SetPromoString(SerializeSquareTreeNodeTemp(root->GetChild(StrL("Promo"))));
-
     SquareTreeNode* node = root->GetChild(StrL("SumatraPDF"));
     if (!node) {
         return nullptr;

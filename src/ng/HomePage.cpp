@@ -57,23 +57,11 @@
 
 // --- tips and promotions (orig's) -------------------------------------------
 
-static Str sumatraPromos = StrL(R"promos(Try [Edna](https://edna.arslexis.io): a note taking web app for power users.
-Try [MarkLexis](https://marklexis.arslexis.io): a bookmarking web application.
-Try [Sumatra File Manager](https://sumatrafilemanager.com): file manager with super powers.
-Try [Sumatra File Manager Online](https://online.sumatrafilemanager.com): file manager for S3, Dropbox and more.
-)promos");
-
-static Str promoFromServer;
-
 static void EnsureTipsParsed() {
     if (gTipsParsed) {
         return;
     }
     CollectTipsFromString(sumatraTips, &gTipLines);
-    CollectTipsFromString(sumatraPromos, &gPromoLines);
-    if (len(promoFromServer) > 0) {
-        CollectTipsFromString(promoFromServer, &gPromoLines);
-    }
     gTipsParsed = true;
     PickRandomTipOrPromo();
 }
@@ -81,23 +69,13 @@ static void EnsureTipsParsed() {
 void FreeHomePageTips() {
     if (gTipsParsed) {
         gTipLines.Reset();
-        gPromoLines.Reset();
         gTipsParsed = false;
     }
-    str::Free(promoFromServer);
-    promoFromServer = {};
     HomePageInvalidateLayoutCache();
 }
 
 void PickAnotherRandomPromotion() {
     PickAnotherRandomTip();
-}
-
-void SetPromoString(Str s) {
-    if (len(s) == 0) {
-        return;
-    }
-    str::ReplaceWithCopy(&promoFromServer, s);
 }
 
 // --- the About rows (orig's) -------------------------------------------------
@@ -120,16 +98,12 @@ static AboutRow gAboutRows[] = {
     {StrL("forums"), StrL("SumatraPDF forums"), StrL("https://github.com/sumatrapdfreader/sumatrapdf/discussions")},
     {StrL("licenses"), StrL("Various Open Source"),
      StrL("https://github.com/sumatrapdfreader/sumatrapdf/blob/master/AUTHORS")},
-    {StrL("more software by me"), StrL("Sumatra File Manager"), StrL("https://sumatrafilemanager.com")},
-    {{}, StrL("Sumatra File Manager Online"), StrL("https://online.sumatrafilemanager.com")},
     {{}, {}, {}}};
 
-// the rows from kAboutSoftwareRow on are the other software, in the footer
-constexpr int kAboutSoftwareEnd = dimofi(gAboutRows) - 1;
-constexpr int kAboutSoftwareRow = kAboutSoftwareEnd - 2;
+constexpr int kAboutRowsCount = dimofi(gAboutRows) - 1;
 
 // the About box (orig's): the brand over the version, the link rows, a note,
-// then a hairline over the copy link and the other software. Every row has a
+// then a hairline over the copy link. Every row has a
 // fixed height, so the window can be sized before it is made
 constexpr int kAboutBoxDx = 380;
 constexpr int kAboutPadTop = 28;
@@ -143,8 +117,6 @@ constexpr int kAboutMetaDy = 16;
 constexpr int kAboutRowGap = 7;
 constexpr int kAboutColGap = 20;
 constexpr int kAboutFootGap = 18;
-constexpr int kAboutFootRowGap = 10;
-constexpr int kAboutSoftwareGap = 4;
 constexpr int kAboutNoteMarkDx = 10;
 constexpr int kAboutNoteMarkDy = 3;
 constexpr int kAboutNoteGap = 8;
@@ -997,7 +969,7 @@ static gp::El* AboutBoxEl(MainWindow* win, gp::Ctx* cx, bool withBorder) {
     // the rows: muted labels, right-aligned, then the links
     gp::El* labels = gp::Div(cx->a)->FlexCol()->ItemsEnd()->Gap((float)kAboutRowGap)->Shrink0();
     gp::El* values = gp::Div(cx->a)->FlexCol()->ItemsStart()->Gap((float)kAboutRowGap)->Flex1()->MinW(0);
-    for (int i = 0; i < kAboutSoftwareRow; i++) {
+    for (int i = 0; i < kAboutRowsCount; i++) {
         AboutRow* el = &gAboutRows[i];
         labels->Child(gp::TextEl(cx->a, GpuiDup(cx->a, el->leftTxt))
                           ->Font((float)kAboutTextFontPx)
@@ -1024,14 +996,9 @@ static gp::El* AboutBoxEl(MainWindow* win, gp::Ctx* cx, bool withBorder) {
                     gp::TextEl(cx->a, GpuiDup(cx->a, noteTxt))->Font((float)kAboutMetaFontPx)->Fg(ToGpui(colMuted))));
     }
 
-    // the footer under the hairline: the copy link, then the other software
-    gp::El* foot = gp::Div(cx->a)
-                       ->FlexCol()
-                       ->ItemsCenter()
-                       ->W(gp::kFill)
-                       ->BorderT(1, ToGpui(colEdge))
-                       ->PadT((float)kAboutFootGap)
-                       ->Gap((float)kAboutFootRowGap);
+    // the footer under the hairline: the copy link
+    gp::El* foot =
+        gp::Div(cx->a)->FlexCol()->ItemsCenter()->W(gp::kFill)->BorderT(1, ToGpui(colEdge))->PadT((float)kAboutFootGap);
     foot->Child(gp::TextEl(cx->a, ToGpui(Tr("Copy program and machine info")))
                     ->Font((float)kAboutTextFontPx)
                     ->Fg(ToGpui(colText))
@@ -1040,31 +1007,19 @@ static gp::El* AboutBoxEl(MainWindow* win, gp::Ctx* cx, bool withBorder) {
                     ->Cursor(gp::CursorKind::Pointer)
                     ->PathClick(GStrL("about-copy-info"))
                     ->OnClick(gp::ListenTo(Ui(win)->view, &HomeView::OnCopyInfo)));
-    gp::El* software = gp::Div(cx->a)->FlexCol()->ItemsCenter()->Gap((float)kAboutSoftwareGap);
-    software->Child(gp::TextEl(cx->a, GpuiDup(cx->a, gAboutRows[kAboutSoftwareRow].leftTxt))
-                        ->Font((float)kAboutMetaFontPx)
-                        ->Fg(ToGpui(colMuted))
-                        ->H((float)kAboutMetaDy));
-    for (int i = kAboutSoftwareRow; i < kAboutSoftwareEnd; i++) {
-        AboutRow* el = &gAboutRows[i];
-        software->Child(AboutLinkEl(win, cx, el->rightTxt, el->url, fmt("about-software-%d", i), i));
-    }
-    foot->Child(software);
     box->Child(foot);
     return box;
 }
 
 // the box's height in dips, from the fixed row heights
 static int AboutBoxDy() {
-    int n = kAboutSoftwareRow;
+    int n = kAboutRowsCount;
     int dy = kAboutPadTop + kAboutBrandDy + kAboutVersionGap + kAboutMetaDy;
     dy += kAboutGroupGap + (n * kAboutRowDy) + ((n - 1) * kAboutRowGap);
     if (len(AboutNoteText()) > 0) {
         dy += kAboutGroupGap + kAboutMetaDy;
     }
-    int nSoftware = kAboutSoftwareEnd - kAboutSoftwareRow;
-    dy += kAboutGroupGap + 1 + kAboutFootGap + kAboutRowDy + kAboutFootRowGap + kAboutMetaDy +
-          (nSoftware * (kAboutSoftwareGap + kAboutRowDy)) + kAboutPadBottom;
+    dy += kAboutGroupGap + 1 + kAboutFootGap + kAboutRowDy + kAboutPadBottom;
     return dy;
 }
 
