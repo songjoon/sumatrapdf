@@ -12,7 +12,10 @@ file page corresponding to printed book page 1. Press Enter to apply it.
 For example, entering **13** makes file page 13 appear as book page 1; entering
 **5** in the page-number input then navigates to file page 17.
 
-The total shows the book-page count and the current physical file position.
+Negative values are supported for excerpts whose printed numbering starts
+later: entering **-5** makes file page 1 appear as book page 7.
+
+The total shows the final book page number and the current physical file position.
 Front matter remains accessible using zero and negative page numbers. Setting
 **Book 1 at:** to **0** restores the document's original page labels. Escape
 discards an unfinished edit. Values outside the file's page range are rejected.
@@ -34,5 +37,5 @@ The targeted Windows check is:
 bun tests/ad-hoc-book-pages.ts --no-build
 ```
 
-It checks native PDF labels, book-page navigation, front matter, invalid input,
-resetting the mapping and persistence after reopening the document.
+It checks native PDF labels, positive and negative book offsets, front matter,
+invalid input, resetting the mapping and persistence after reopening the document.

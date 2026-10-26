@@ -773,7 +773,7 @@ void UpdateToolbarPageText(MainWindow* win, int pageCount, bool updateOnly) {
         if (dm) {
             logical = dm->LogicalPageCount();
         }
-        if (logical > 0 && (logical != pageCount || (dm && dm->bookStartPage > 0))) {
+        if (logical > 0 && (logical != pageCount || (dm && dm->bookStartPage != 0))) {
             txt = fmt(" / %d (%d / %d)", logical, win->ctrl->CurrentPageNo(), pageCount);
         } else {
             txt = fmt("%d / %d", win->ctrl->CurrentPageNo(), pageCount);
@@ -3008,7 +3008,8 @@ static void OnBookStartChar(MainWindow* win, Edit::CharEvent* ev) {
     if ((Key)ev->c == Key::Enter) {
         int start = 0;
         Str text = tb->bookStartEdit->GetTextTemp();
-        if (str::IsNull(str::Parse(text, "%d%$", &start)) || start < 0 || start > dm->PageCount()) {
+        if (str::IsNull(str::Parse(text, "%d%$", &start)) || start > dm->PageCount() ||
+            (i64)dm->PageCount() - start + 1 > INT_MAX) {
             MessageBeep(MB_ICONWARNING);
             EditSelectAll(tb->bookStartEdit);
             ev->didHandle = true;
@@ -3037,6 +3038,7 @@ static void OnBookStartChar(MainWindow* win, Edit::CharEvent* ev) {
 
 Edit* ToolbarCreateBookStart(MainWindow* win, PlatformFont* font, int iconDy) {
     Edit* edit = ToolbarCreateLocationEdit(win, font, iconDy);
+    EditSetNumbersOnly(edit, false);
     edit->onChar = MkFunc1(OnBookStartChar, win);
     return edit;
 }

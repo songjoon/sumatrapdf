@@ -88,16 +88,29 @@ export async function testit(): Promise<void> {
       enter(edits.page, invalid);
       assert.equal(await physicalPage(first.client), 1, `reject book page ${invalid}`);
     }
-    for (const invalid of ["21", "-1", "", "abc"]) {
+    for (const invalid of ["21", "-2147483648", "", "abc"]) {
       enter(edits.start, invalid);
       enter(edits.page, "1");
       assert.equal(await physicalPage(first.client), 13, `reject book start ${invalid}`);
     }
+    sendText(edits.start, "");
+    sendMessage(edits.start, WM_CHAR, "-".charCodeAt(0), 0);
+    sendMessage(edits.start, WM_CHAR, "5".charCodeAt(0), 0);
+    assert.equal(getControlText(edits.start), "-5", "negative offset can be typed");
+    sendMessage(edits.start, WM_CHAR, 13, 0);
+    enter(edits.page, "7");
+    assert.equal(await physicalPage(first.client), 1, "negative start maps book page 7 to file page 1");
+    enter(edits.page, "26");
+    assert.equal(await physicalPage(first.client), 20, "negative start maps the last page");
+    for (const invalid of ["6", "27"]) {
+      enter(edits.page, invalid);
+      assert.equal(await physicalPage(first.client), 20, `reject book page ${invalid} with negative start`);
+    }
     enter(edits.start, "0");
     enter(edits.page, "i");
     assert.equal(await physicalPage(first.client), 1, "reset restores native PDF labels");
-    enter(edits.start, "13");
-    enter(edits.page, "1");
+    enter(edits.start, "-5");
+    enter(edits.page, "7");
     await first.client.waitForRenderIdle();
     captureWindowToPng(first.frame, tmpPath("book-pages.png"));
     await first.client.quit();
@@ -107,16 +120,16 @@ export async function testit(): Promise<void> {
     first.client.close();
     if (first.proc.exitCode === null) await killAndWait(first.proc);
   }
-  assert.match(readFileSync(settings, "utf8"), /BookStartPage\s*=\s*13\b/, "saved per document");
+  assert.match(readFileSync(settings, "utf8"), /BookStartPage\s*=\s*-5\b/, "negative start saved per document");
 
   const reopened = await launchControlled(["-appdata", appdata, pdf]);
   try {
     await reopened.client.waitForRenderIdle();
     const edits = pageEdits(reopened.frame);
-    assert.equal(getControlText(edits.start), "13", "book start survives reopening");
-    assert.equal(getControlText(edits.page), "1", "logical page survives reopening");
-    enter(edits.page, "2");
-    assert.equal(await physicalPage(reopened.client), 14, "restored mapping controls navigation");
+    assert.equal(getControlText(edits.start), "-5", "negative book start survives reopening");
+    assert.equal(getControlText(edits.page), "7", "logical page survives reopening");
+    enter(edits.page, "8");
+    assert.equal(await physicalPage(reopened.client), 2, "restored negative mapping controls navigation");
     await reopened.client.quit();
     assert.ok(await waitForExit(reopened.proc));
   } finally {
