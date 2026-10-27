@@ -5,6 +5,7 @@
 
 #include "SumatraConfig.h"
 #include "OpenAiTts.h"
+#include "SumatraLog.h"
 
 static HANDLE gOpenAiProcess = nullptr;
 static Str gOpenAiRequestPath;
@@ -49,6 +50,7 @@ bool OpenAiTtsStart(Str text, Str voice, float speed) {
     }
     TempStr exe = GetPathInExeDirTemp(StrL("OpenAiTts.exe"));
     if (!file::Exists(exe)) {
+        logf("tts: OpenAI speech helper is missing\n");
         return false;
     }
     TempStr testEndpoint = gForTesting ? GetEnvVariableTemp(StrL("SUMATRA_OPENAI_TEST_ENDPOINT")) : TempStr{};
@@ -58,6 +60,7 @@ bool OpenAiTtsStart(Str text, Str voice, float speed) {
             json::EscapeStrTemp(testEndpoint));
     gOpenAiRequestPath = str::Dup(GetTempFilePathTemp(StrL("sumatra-openai")));
     if (!file::WriteFile(gOpenAiRequestPath, request)) {
+        logf("tts: OpenAI speech job write failed: %u\n", GetLastError());
         OpenAiRemoveJob();
         return false;
     }
@@ -68,11 +71,13 @@ bool OpenAiTtsStart(Str text, Str voice, float speed) {
     PROCESS_INFORMATION process = {};
     if (!CreateProcessW(CWStrTemp(ToWStrTemp(exe)), commandW.s, nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr,
                         CWStrTemp(ToWStrTemp(GetSelfExeDirTemp())), &startup, &process)) {
+        logf("tts: OpenAI speech helper launch failed: %u\n", GetLastError());
         OpenAiRemoveJob();
         return false;
     }
     CloseHandle(process.hThread);
     gOpenAiProcess = process.hProcess;
+    logf("tts: OpenAI speech helper started\n");
     return true;
 }
 

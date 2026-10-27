@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { ControlCommand } from "./control";
 import { assemblePdf, cmdId, runStandalone, tmpPath, writeAppdata } from "./util";
 import { killAndWait, launchControlled, sendCommand } from "./win-automation";
@@ -66,9 +66,10 @@ export async function testit(): Promise<void> {
   );
   const appdata = writeAppdata(
     "openai-read-aloud",
-    "RestoreSession = false\nCheckForUpdates = false\nReadAloudVoice = openai:marin\nReadAloudSpeed = 1\nUiLanguage = en\n",
+    "RestoreSession = false\nCheckForUpdates = false\nReadAloudVoiceId = openai:marin\nReadAloudSpeed = 1\nUiLanguage = en\n",
   );
-  const session = await launchControlled(["-appdata", appdata, pdf], {
+  const log = tmpPath("openai-read-aloud.log");
+  const session = await launchControlled(["-appdata", appdata, "-log-to-file", log, pdf], {
     env: { SUMATRA_OPENAI_TEST_ENDPOINT: `ws://127.0.0.1:${server.port}`, OPENAI_API_KEY: "test-secret" },
   });
   const state = async () => String((await session.client.request(ControlCommand.TestReadAloudPlaybackBar, []))[1]);
@@ -88,6 +89,17 @@ export async function testit(): Promise<void> {
     await until(() => closed > beforeClose, "stop did not disconnect pending synthesis");
     assert.match(await state(), /speaking=0/);
     console.log("PASS native OpenAI Read Aloud: helper, playback completion, stop during synthesis");
+  } catch (error) {
+    console.error(await state());
+    if (existsSync(log)) {
+      console.error(
+        readFileSync(log, "utf8")
+          .split(/\r?\n/)
+          .filter((line) => /tts:|ApplyReadAloudVoice|OpenAI/.test(line))
+          .join("\n"),
+      );
+    }
+    throw error;
   } finally {
     session.client.close();
     await killAndWait(session.proc);
