@@ -486,6 +486,9 @@
     <ClInclude Include="..\src\shared\OleDragDropCommon.h">
       <Filter>src\shared</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\shared\OpenAiTts.h">
+      <Filter>src\shared</Filter>
+    </ClInclude>
     <ClInclude Include="..\src\shared\OverlayScrollbarCommon.h">
       <Filter>src\shared</Filter>
     </ClInclude>
@@ -1368,6 +1371,9 @@
       <Filter>src\shared</Filter>
     </ClCompile>
     <ClCompile Include="..\src\shared\OleDragDropCommon_win.cpp">
+      <Filter>src\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\shared\OpenAiTts_win.cpp">
       <Filter>src\shared</Filter>
     </ClCompile>
     <ClCompile Include="..\src\shared\OpenFileFilters_win.cpp">

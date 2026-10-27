@@ -19,7 +19,7 @@ bool OpenAiTtsConfigured() {
 }
 
 static void OpenAiRemoveJob() {
-    if (!gOpenAiRequestPath) {
+    if (len(gOpenAiRequestPath) == 0) {
         return;
     }
     file::Delete(gOpenAiRequestPath);
@@ -44,7 +44,7 @@ bool OpenAiTtsPending() {
 
 // Isolate network work and credentials from the UI; stopping kills the socket owner.
 bool OpenAiTtsStart(Str text, Str voice, float speed) {
-    if (gOpenAiProcess || !text) {
+    if (gOpenAiProcess || len(text) == 0) {
         return false;
     }
     TempStr exe = GetPathInExeDirTemp(StrL("OpenAiTts.exe"));

@@ -1726,7 +1726,7 @@ bool TtsSetVoiceById(Str voiceId) {
     bool ok = false;
 
     if (str::Eq(voiceId, StrL("openai:marin")) || str::Eq(voiceId, StrL("openai:cedar")) ||
-        str::Eq(voiceId, StrL("openai:coral")) || (!voiceId && !TtsForceSapi() && OpenAiTtsConfigured())) {
+        str::Eq(voiceId, StrL("openai:coral")) || (len(voiceId) == 0 && !TtsForceSapi() && OpenAiTtsConfigured())) {
         next = TtsBackend::OpenAi;
         ok = true;
     } else if (!TtsForceSapi() && WinTtsInit() && WinTtsSetVoiceById(voiceId)) {

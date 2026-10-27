@@ -1533,6 +1533,7 @@
     <ClInclude Include="..\src\shared\NavFilesInFolderCommon.h" />
     <ClInclude Include="..\src\shared\NotificationsCommon.h" />
     <ClInclude Include="..\src\shared\OleDragDropCommon.h" />
+    <ClInclude Include="..\src\shared\OpenAiTts.h" />
     <ClInclude Include="..\src\shared\OverlayScrollbarCommon.h" />
     <ClInclude Include="..\src\shared\PDFScript.h" />
     <ClInclude Include="..\src\shared\PageGridDialogCommon.h" />
@@ -2219,6 +2220,7 @@
     <ClCompile Include="..\src\shared\NavFilesInFolderCommon.cpp" />
     <ClCompile Include="..\src\shared\NotificationsCommon.cpp" />
     <ClCompile Include="..\src\shared\OleDragDropCommon_win.cpp" />
+    <ClCompile Include="..\src\shared\OpenAiTts_win.cpp" />
     <ClCompile Include="..\src\shared\OpenFileFilters_win.cpp" />
     <ClCompile Include="..\src\shared\OverlayScrollbarCommon.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
