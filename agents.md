@@ -1,3 +1,18 @@
+## Fork workflow
+
+- Work only in the fork: `https://github.com/songjoon/sumatrapdf`.
+- Never write to `sumatrapdfreader/sumatrapdf`: no pushes, commits, branches,
+  tags, pull requests or other mutations. Upstream access is read-only.
+- Before every push, verify that the push URL targets `songjoon/sumatrapdf`.
+  Stop if it targets any other repository.
+- `main` is the integration and default branch. Start every completely new
+  or independent feature on a new `codex/<feature>` branch from the latest
+  fork `main`.
+- Implement and validate the feature on its branch. Merge into `main` only
+  after the user explicitly approves the completed work. Permission to
+  implement or push alone is not permission to merge.
+- Keep the explicit commit authorization requirement below.
+
 The original SumatraPDF is a Windows-only C++ program using Win32. Its old
 macOS/Linux ports were removed. SumatraPDF ng in `src/ng/` targets macOS,
 Linux and WebAssembly; its Windows build is for testing and comparison.
