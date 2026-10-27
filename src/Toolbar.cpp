@@ -175,6 +175,12 @@ static bool SetToolbarButtonHiddenByIdx(MainWindow* win, int idx, bool isHidden)
         if (tb->pageTotal) {
             tb->pageTotal->SetVisibility(want);
         }
+        if (tb->bookStartLabel) {
+            tb->bookStartLabel->SetVisibility(want);
+        }
+        if (tb->bookStartEdit) {
+            tb->bookStartEdit->SetVisibility(want);
+        }
         // chapter widgets stay collapsed unless the doc has chapters;
         // UpdateToolbarPageText() narrows this further right after
         if (win->chapterEdit) {
@@ -652,7 +658,8 @@ void ShowOrHideToolbar(MainWindow* win) {
     if (!show && !overlay) {
         // Move the focus out of the toolbar
         if ((win->findEdit && win->findEdit->IsFocused()) || (win->pageEdit && win->pageEdit->IsFocused()) ||
-            (win->chapterEdit && win->chapterEdit->IsFocused())) {
+            (win->chapterEdit && win->chapterEdit->IsFocused()) ||
+            (win->toolbarVirt && win->toolbarVirt->bookStartEdit && win->toolbarVirt->bookStartEdit->IsFocused())) {
             ToolbarFocusFrame(win);
         }
         if (win->hwndToolbar) {
@@ -717,6 +724,22 @@ void UpdateToolbarPageText(MainWindow* win, int pageCount, bool updateOnly) {
     }
     Visibility chapterVis = hasChapters ? Visibility::Visible : Visibility::Collapse;
     bool chapterVisChanged = false;
+    DisplayModel* bookModel = win->ctrl ? win->ctrl->AsFixed() : nullptr;
+    bool pageVisible = tb->pageLabel && tb->pageLabel->GetVisibility() == Visibility::Visible;
+    Visibility bookVis = bookModel && !hasChapters && pageVisible ? Visibility::Visible : Visibility::Collapse;
+    if (tb->bookStartLabel && tb->bookStartLabel->GetVisibility() != bookVis) {
+        tb->bookStartLabel->SetVisibility(bookVis);
+        chapterVisChanged = true;
+    }
+    if (tb->bookStartEdit) {
+        if (tb->bookStartEdit->GetVisibility() != bookVis) {
+            tb->bookStartEdit->SetVisibility(bookVis);
+            chapterVisChanged = true;
+        }
+        if (!tb->bookStartEdit->IsFocused()) {
+            tb->bookStartEdit->SetText(fmt("%d", bookModel ? bookModel->bookStartPage : kDefaultBookStartPage));
+        }
+    }
     if (win->chapterEdit && win->chapterEdit->GetVisibility() != chapterVis) {
         win->chapterEdit->SetVisibility(chapterVis);
         chapterVisChanged = true;
@@ -750,7 +773,7 @@ void UpdateToolbarPageText(MainWindow* win, int pageCount, bool updateOnly) {
         if (dm) {
             logical = dm->LogicalPageCount();
         }
-        if (logical > 0 && logical != pageCount) {
+        if (logical > 0 && (logical != pageCount || (dm && dm->bookStartPage != kDefaultBookStartPage))) {
             txt = fmt(" / %d (%d / %d)", logical, win->ctrl->CurrentPageNo(), pageCount);
         } else {
             txt = fmt("%d / %d", win->ctrl->CurrentPageNo(), pageCount);
@@ -828,6 +851,12 @@ static void RefreshToolbarIcons(MainWindow* win) {
         }
         ib->pixmap = GetCachedPixmapForSvg(Str(bi.icon), sz, sz, fg, TbBgColor());
         ib->pixmapDisabled = GetCachedPixmapForSvg(Str(bi.icon), sz, sz, dis, TbBgColor());
+    }
+    if (tb->bookStartLabel) {
+        tb->bookStartLabel->SetColor(kColText, TbTextColor());
+    }
+    if (tb->bookStartEdit) {
+        tb->bookStartEdit->SetColors(TbTextColor(), ThemeWindowControlBackgroundColor());
     }
     if (tb->pageLabel) {
         tb->pageLabel->SetColor(kColText, TbTextColor());
@@ -2558,6 +2587,8 @@ static void BuildToolbarLayout(MainWindow* win) {
     tb->pageLabel2 = nullptr;
     tb->pageTotal = nullptr;
     tb->chapterTotal = nullptr;
+    tb->bookStartLabel = nullptr;
+    tb->bookStartEdit = nullptr;
     win->pageEdit = nullptr;
     win->chapterEdit = nullptr;
 
@@ -2624,6 +2655,17 @@ static void BuildToolbarLayout(MainWindow* win) {
             total->id = PageInfoId;
             tb->pageTotal = total;
             box->AddChild(total);
+
+            auto* bookLabel = new VirtText(Tr("Book 1 at:"), tb->platformFont);
+            bookLabel->isRtl = box->rtl;
+            bookLabel->SetColor(kColText, fg);
+            bookLabel->padding = {0, pageGap, 0, DpiScale(4)};
+            bookLabel->id = PageInfoId;
+            bookLabel->SetTooltip(Tr("File page for book page 1 (default: 1). Press Enter to apply."));
+            tb->bookStartLabel = bookLabel;
+            box->AddChild(bookLabel);
+            tb->bookStartEdit = ToolbarCreateBookStart(win, tb->platformFont, tb->iconSize);
+            box->AddChild(tb->bookStartEdit);
             VecAppend(tb->items, label);
             continue;
         }
@@ -2955,6 +2997,50 @@ static Edit* ToolbarCreateLocationEdit(MainWindow* win, PlatformFont* font, int 
     e->idealDy = iconDy;
     e->onChar = MkFunc1(OnLocationEditChar, win);
     return e;
+}
+
+static void OnBookStartChar(MainWindow* win, Edit::CharEvent* ev) {
+    auto* tb = win->toolbarVirt;
+    DisplayModel* dm = win->AsFixed();
+    if (!tb || !tb->bookStartEdit || !dm) {
+        return;
+    }
+    if ((Key)ev->c == Key::Enter) {
+        int start = 0;
+        Str text = tb->bookStartEdit->GetTextTemp();
+        if (str::IsNull(str::Parse(text, "%d%$", &start)) || start > dm->PageCount() ||
+            (start != 0 && (i64)dm->PageCount() - start + 1 > INT_MAX)) {
+            MessageBeep(MB_ICONWARNING);
+            EditSelectAll(tb->bookStartEdit);
+            ev->didHandle = true;
+            return;
+        }
+        dm->SetBookStartPage(start);
+        ScheduleSaveSettings();
+        if (win->pageEdit) {
+            win->pageEdit->SetText(dm->GetPageLabeTemp(dm->CurrentPageNo()));
+            EditSetNumbersOnly(win->pageEdit, !dm->HasPageLabels());
+        }
+        UpdateToolbarPageText(win, dm->PageCount());
+        UpdateTabPageText(win->CurrentTab());
+    } else if ((Key)ev->c == Key::Tab) {
+        AdvanceFocus(win);
+        ev->didHandle = true;
+        return;
+    } else if ((Key)ev->c != Key::Escape) {
+        return;
+    }
+    tb->bookStartEdit->SetText(fmt("%d", dm->bookStartPage));
+    HwndSetFocus(win->hwndFrame);
+    UpdateOverlayToolbarForMouse(win);
+    ev->didHandle = true;
+}
+
+Edit* ToolbarCreateBookStart(MainWindow* win, PlatformFont* font, int iconDy) {
+    Edit* edit = ToolbarCreateLocationEdit(win, font, iconDy);
+    EditSetNumbersOnly(edit, false);
+    edit->onChar = MkFunc1(OnBookStartChar, win);
+    return edit;
 }
 
 Edit* ToolbarCreatePageEdit(MainWindow* win, PlatformFont* font, int iconDy) {

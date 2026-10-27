@@ -94,20 +94,11 @@ struct TipHookInstaller {
 };
 static TipHookInstaller gTipHookInstaller;
 
-static Str sumatraPromos = StrL(R"promos(Try [Edna](https://edna.arslexis.io): a note taking web app for power users.
-Try [MarkLexis](https://marklexis.arslexis.io): a bookmarking web application.
-Try [Sumatra File Manager](https://sumatrafilemanager.com): file manager with super powers.
-Try [Sumatra File Manager Online](https://online.sumatrafilemanager.com): file manager for S3, Dropbox and more.
-)promos");
-
-static Str promoFromServer;
-
 static void EnsureTipsParsed() {
     if (gTipsParsed) {
         return;
     }
     CollectTipsFromString(sumatraTips, &gTipLines);
-    CollectTipsFromString(sumatraPromos, &gPromoLines);
     gTipsParsed = true;
     PickRandomTipOrPromo();
 }
@@ -117,15 +108,13 @@ static void ClearHomeLayoutCache(MainWindow*);
 void FreeHomePageTips() {
     if (gTipsParsed) {
         gTipLines.Reset();
-        gPromoLines.Reset();
         gTipsParsed = false;
     }
-    str::Free(promoFromServer);
     HomePageInvalidateLayoutCache();
 }
 
 // the About box: the brand over the version, the link rows, a note, then a
-// hairline over the copy link and the other software
+// hairline over the copy link
 constexpr int kAboutBoxDx = 380;
 constexpr int kAboutPadTop = 28;
 constexpr int kAboutPadSide = 32;
@@ -135,8 +124,6 @@ constexpr int kAboutGroupGap = 22;
 constexpr int kAboutRowGap = 7;
 constexpr int kAboutColGap = 20;
 constexpr int kAboutFootGap = 18;
-constexpr int kAboutFootRowGap = 10;
-constexpr int kAboutSoftwareGap = 4;
 constexpr int kAboutNoteMarkDx = 10;
 constexpr int kAboutNoteMarkDy = 3;
 constexpr int kAboutNoteGap = 8;
@@ -178,13 +165,9 @@ static AboutRow gAboutRows[] = {
     {StrL("last change"), StrL("git commit " GIT_COMMIT_ID_STR),
      StrL("https://github.com/sumatrapdfreader/sumatrapdf/commit/" GIT_COMMIT_ID_STR)},
 #endif
-    {StrL("more software by me"), StrL("Sumatra File Manager"), StrL("https://sumatrafilemanager.com")},
-    {{}, StrL("Sumatra File Manager Online"), StrL("https://online.sumatrafilemanager.com")},
     {{}, {}, {}}};
 
-// the rows from kAboutSoftwareRow on are the other software, in the footer
-constexpr int kAboutSoftwareEnd = dimofi(gAboutRows) - 1;
-constexpr int kAboutSoftwareRow = kAboutSoftwareEnd - 2;
+constexpr int kAboutRowsCount = dimofi(gAboutRows) - 1;
 
 // the line under the rows that says this isn't a release build
 static Str AboutNoteText() {
@@ -199,7 +182,7 @@ static Str AboutNoteText() {
 
 // The About box, the same in the About window, the home page's dropdown and
 // the About page: the brand over the version line, label / link rows, the
-// build note, then a hairline over the copy link and the other software.
+// build note, then a hairline over the copy link.
 // Rows with a url are VirtLink (hit-testing, hand cursor, tooltip)
 static Kind kindAboutCtrl = "aboutCtrl";
 
@@ -213,8 +196,6 @@ struct AboutCtrl : VirtCtrl {
     VirtText* note = nullptr;
     // copies version / OS / machine info for bug reports
     VirtLink* copyLink = nullptr;
-    VirtText* softwareHeader = nullptr;
-    Vec<VirtLink*> softwareLinks;
     // "Show frequently read", bottom right of the About page (not the window)
     VirtLink* showFreqRead = nullptr;
     // the dropdown has a hairline around it; the window and the page don't
@@ -234,11 +215,6 @@ struct AboutCtrl : VirtCtrl {
 static void OpenAboutUrl(VirtMouseEvent* ev) {
     auto* link = (VirtLink*)ev->target;
     OpenTipUrl(link->target);
-}
-
-void SetPromoString(Str s) {
-    if (len(s) == 0) return;
-    str::ReplaceWithCopy(&promoFromServer, s);
 }
 
 static TempStr GetAppVersionTemp() {
@@ -354,19 +330,6 @@ AboutCtrl::AboutCtrl() {
     copyLink->underlineOffsetY = -3;
     copyLink->onClick = MkFunc1Void(OnCopyProgramInfo);
     AddChild(copyLink);
-    AboutRow& software = gAboutRows[kAboutSoftwareRow];
-    softwareHeader = new VirtText(software.leftTxt);
-    AddChild(softwareHeader);
-    for (int i = kAboutSoftwareRow; i < kAboutSoftwareEnd; i++) {
-        auto* link = new VirtLink(gAboutRows[i].rightTxt);
-        link->SetTarget(gAboutRows[i].url);
-        link->SetTooltip(gAboutRows[i].url);
-        link->withUnderline = true;
-        link->underlineOffsetY = -3;
-        link->onClick = MkFunc1Void(OpenAboutUrl);
-        AddChild(link);
-        VecAppend(softwareLinks, link);
-    }
 }
 
 // the hairline over the footer, the note's mark and the dropdown's frame
@@ -389,7 +352,7 @@ void AboutCtrl::Paint(VirtPaintCtx& ctx) {
 // build the rows once, then keep text, fonts and colors in step with the theme
 // and the DPI. Sizing happens in UpdateLayout(), which measures what we set here
 void AboutCtrl::Sync() {
-    int n = kAboutSoftwareRow;
+    int n = kAboutRowsCount;
     bool canAccessDisk = CanAccessDisk();
     if (len(labels) == 0) {
         for (int i = 0; i < n; i++) {
@@ -441,11 +404,6 @@ void AboutCtrl::Sync() {
     copyLink->font = fontText;
     copyLink->SetColor(kColText, colText);
     copyLink->underlineColor = colMuted;
-    softwareHeader->font = fontMeta;
-    softwareHeader->SetColor(kColText, colMuted);
-    for (VirtLink* link : softwareLinks) {
-        syncLink(link);
-    }
 }
 
 // the box is kAboutBoxDx wide (more when a row needs it) and as tall as its
@@ -478,14 +436,7 @@ void AboutCtrl::UpdateLayout(Rect clientRc) {
     note->sz = {};
     Size noteSz = showNote ? note->GetIdealSize(true) : Size{};
     copyLink->sz = {};
-    softwareHeader->sz = {};
     Size copySz = copyLink->GetIdealSize(true);
-    Size hdrSz = softwareHeader->GetIdealSize(true);
-    int linksDy = 0;
-    for (VirtLink* link : softwareLinks) {
-        link->sz = {};
-        linksDy += DpiScale(kAboutSoftwareGap) + link->GetIdealSize(true).dy;
-    }
 
     Rect r;
     r.dx = std::max(DpiScale(kAboutBoxDx), labelDx + colGap + valueDx + (2 * padSide));
@@ -493,8 +444,7 @@ void AboutCtrl::UpdateLayout(Rect clientRc) {
     if (showNote) {
         r.dy += groupGap + noteSz.dy;
     }
-    r.dy += groupGap + 1 + DpiScale(kAboutFootGap) + copySz.dy + DpiScale(kAboutFootRowGap) + hdrSz.dy + linksDy +
-            padBottom;
+    r.dy += groupGap + 1 + DpiScale(kAboutFootGap) + copySz.dy + padBottom;
     r.x = clientRc.x + ((clientRc.dx - r.dx) / 2);
     r.y = clientRc.y + ((clientRc.dy - r.dy) / 2);
     aboutRect = r;
@@ -533,15 +483,6 @@ void AboutCtrl::UpdateLayout(Rect clientRc) {
     hairlineY = y;
     y += 1 + DpiScale(kAboutFootGap);
     copyLink->SetBounds({x + ((innerDx - copySz.dx) / 2), y, copySz.dx, copySz.dy});
-    y += copySz.dy + DpiScale(kAboutFootRowGap);
-    softwareHeader->SetBounds({x + ((innerDx - hdrSz.dx) / 2), y, hdrSz.dx, hdrSz.dy});
-    y += hdrSz.dy;
-    for (VirtLink* link : softwareLinks) {
-        Size linkSz = link->GetIdealSize(true);
-        y += DpiScale(kAboutSoftwareGap);
-        link->SetBounds({x + ((innerDx - linkSz.dx) / 2), y, linkSz.dx, linkSz.dy});
-        y += linkSz.dy;
-    }
 }
 
 // Version, OS, WebView2, memory and similar facts for a bug report.

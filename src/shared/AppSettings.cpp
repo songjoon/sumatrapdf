@@ -1841,6 +1841,7 @@ TabState* NewTabState(FileState* fs) {
     str::ReplaceWithCopy(&state->displayMode, fs->displayMode);
     str::ReplaceWithCopy(&state->pageNo, fs->pageNo);
     str::ReplaceWithCopy(&state->zoom, fs->zoom);
+    state->bookStartPage = fs->bookStartPage;
     state->rotation = fs->rotation;
     state->scrollPos = fs->scrollPos;
     state->showToc = fs->showToc;

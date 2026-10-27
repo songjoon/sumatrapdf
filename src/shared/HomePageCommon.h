@@ -3,7 +3,6 @@
 
 // --- shared by HomePageCommon.cpp and each app's HomePage.cpp ---
 extern StrVec gTipLines;
-extern StrVec gPromoLines;
 extern bool gTipsParsed;
 extern bool gSelectedIsPromo;
 extern int gSelectedTipIdx;

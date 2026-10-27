@@ -142,6 +142,8 @@ struct ToolbarVirt {
     ILayout* annotationRow = nullptr;
     VirtText* pageLabel = nullptr;
     VirtText* pageLabel2 = nullptr; // "Page:" before pageEdit, only for HasChapters() docs
+    VirtText* bookStartLabel = nullptr;
+    Edit* bookStartEdit = nullptr;
     VirtText* pageTotal = nullptr;
     VirtText* chapterTotal = nullptr; // only for HasChapters() docs
     PlatformFont* platformFont = nullptr;
@@ -168,6 +170,7 @@ VirtCtrl* ToolbarItemFromPoint(MainWindow*, Point);
 
 Edit* ToolbarCreatePageEdit(MainWindow*, PlatformFont*, int iconDy);
 Edit* ToolbarCreateChapterEdit(MainWindow*, PlatformFont*, int iconDy);
+Edit* ToolbarCreateBookStart(MainWindow*, PlatformFont*, int iconDy);
 void ToolbarSetNativeHooks(MainWindow*, VirtHost*);
 void ToolbarUpdateFindEditCursor(MainWindow*);
 Rect ToolbarCanvasRectInFrame(MainWindow*);

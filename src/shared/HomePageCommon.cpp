@@ -32,8 +32,6 @@
 // the tip markup, one line each; the selected one is parsed by the tip band
 StrVec gTipLines;
 
-StrVec gPromoLines;
-
 bool gTipsParsed = false;
 
 bool gSelectedIsPromo = false;
@@ -57,26 +55,17 @@ Str SelectedTipLine() {
     if (!gSettings->showTips || gSelectedTipIdx < 0) {
         return {};
     }
-    StrVec& v = gSelectedIsPromo ? gPromoLines : gTipLines;
+    StrVec& v = gTipLines;
     if (gSelectedTipIdx >= len(v)) {
         return {};
-    }
-    if (gSelectedIsPromo) {
-        return v[gSelectedTipIdx];
     }
     // translated when shown, so a language change applies without re-parsing
     return str::JoinTemp(Tr("Tip:"), StrL(" "), Tr(v[gSelectedTipIdx]));
 }
 
 void PickRandomTipOrPromo() {
-    bool pickPromo = (len(gPromoLines) > 0) && (rand() % 100 < 30);
-    if (pickPromo) {
-        gSelectedIsPromo = true;
-        gSelectedTipIdx = rand() % len(gPromoLines);
-    } else if (len(gTipLines) > 0) {
-        gSelectedIsPromo = false;
-        gSelectedTipIdx = rand() % len(gTipLines);
-    }
+    gSelectedIsPromo = false;
+    gSelectedTipIdx = len(gTipLines) > 0 ? rand() % len(gTipLines) : -1;
 }
 
 void PickAnotherRandomTip() {

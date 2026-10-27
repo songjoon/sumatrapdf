@@ -27,7 +27,6 @@ void HomePageDelete(MainWindow* win);
 bool HomePageIsListView();
 void SetHomePageListView(bool listView);
 
-void SetPromoString(Str s);
 void FreeHomePageTips();
 void HomePageInvalidateLayoutCache();
 void PickAnotherRandomPromotion();
