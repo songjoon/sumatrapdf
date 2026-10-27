@@ -110,6 +110,10 @@ export function prepareTestEnvironment(): void {
     if (existsSync(sourceTool)) {
       copyFileSync(sourceTool, join(TESTS_TMP_DIR, "sumatrapdf-tool.exe"));
     }
+    const sourceSpeechHelper = join(dirname(sourceExe), "OpenAiTts.exe");
+    if (existsSync(sourceSpeechHelper)) {
+      copyFileSync(sourceSpeechHelper, join(TESTS_TMP_DIR, "OpenAiTts.exe"));
+    }
   }
   if (!IS_WIN) {
     // ng is portable only with a settings file next to it; without one it
