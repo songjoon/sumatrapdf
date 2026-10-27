@@ -760,7 +760,12 @@ static void MenuAppendItem(MenuModel* menu, Str title, int cmdId, bool enabled, 
 static void BuildReadAloudVoiceMenuItems(MenuModel* voiceMenu) {
     Str currentVoiceId = TtsGetVoiceId();
 
+#if OS_WIN
+    MenuAppendItem(voiceMenu, StrL("Default (OpenAI when configured)"), CmdTtsVoiceDefault, true,
+                   len(currentVoiceId) == 0);
+#else
     MenuAppendItem(voiceMenu, StrL("System default"), CmdTtsVoiceDefault, true, len(currentVoiceId) == 0);
+#endif
     MenuAppendSeparator(voiceMenu);
 
     const Vec<TtsVoiceInfo>& voices = ReadAloudVoices();

@@ -11,7 +11,9 @@
 - Implement and validate the feature on its branch. Merge into `main` only
   after the user explicitly approves the completed work. Permission to
   implement or push alone is not permission to merge.
-- Keep the explicit commit authorization requirement below.
+- Feature-branch commits and fork pushes are pre-authorized by the user.
+  This overrides the generic no-automatic-commits rule below. Merging into
+  `main` still requires explicit approval of the completed work.
 
 The original SumatraPDF is a Windows-only C++ program using Win32. Its old
 macOS/Linux ports were removed. SumatraPDF ng in `src/ng/` targets macOS,

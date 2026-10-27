@@ -185,6 +185,8 @@ export const sharedFiles = [
   "src/shared/ReadAloudBarCommon.h",
   "src/shared/ReadAloudSession.cpp",
   "src/shared/ReadAloud_win.cpp",
+  "src/shared/OpenAiTts_win.cpp",
+  "src/shared/OpenAiTts.h",
   "src/shared/ReadingAutoScrollCommon.cpp",
   "src/shared/ReadingAutoScrollCommon.h",
   "src/shared/RefHoverPopupCommon.cpp",
