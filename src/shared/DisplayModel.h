@@ -138,7 +138,13 @@ struct DisplayModel : DocController {
     TempStr GetPageLabeTemp(int pageNo) const override;
     int GetPageByLabel(Str label) const override;
     int LogicalPageCount() const;
-    void SetBookStartPage(int pageNo);
+    enum class BookPageMode {
+        Automatic,
+        Numbered
+    };
+    void SetBookStartPage(int pageNo, BookPageMode mode = BookPageMode::Automatic);
+    bool SetBookPageNumber(int pageNo);
+    bool bookPageNumbers = false;
     int bookStartPage = kDefaultBookStartPage;
 
     bool ValidPageNo(int pageNo) const override;

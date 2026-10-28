@@ -1953,7 +1953,8 @@ static void ReplaceDocumentInCurrentTab(LoadArgs* args, DocController* ctrl, Fil
             // (physical-size) CustomScreenDPI used for zoom
             dm->SetUiDpi(win->frameDpi > 0 ? win->frameDpi : DpiGetForHwnd(win->hwndFrame));
             if (fs) {
-                dm->SetBookStartPage(fs->bookStartPage);
+                dm->SetBookStartPage(fs->bookStartPage, fs->bookPageNumbers ? DisplayModel::BookPageMode::Numbered
+                                                                            : DisplayModel::BookPageMode::Automatic);
                 dm->SetUniformPageWidth(fs->uniformPageWidth);
                 dm->SetTrimEmptyMargins(fs->trimEmptyMargins);
                 dm->SetFreePan(fs->freePan);
@@ -13733,7 +13734,8 @@ static void SetTabState(WindowTab* tab, TabState* state) {
     DocController* ctrl = tab->ctrl;
     DisplayModel* dm = tab->AsFixed();
     if (dm) {
-        dm->SetBookStartPage(state->bookStartPage);
+        dm->SetBookStartPage(state->bookStartPage, state->bookPageNumbers ? DisplayModel::BookPageMode::Numbered
+                                                                          : DisplayModel::BookPageMode::Automatic);
     }
 
     // validate page number from session state

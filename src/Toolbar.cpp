@@ -737,7 +737,7 @@ void UpdateToolbarPageText(MainWindow* win, int pageCount, bool updateOnly) {
             chapterVisChanged = true;
         }
         if (!tb->bookStartEdit->IsFocused()) {
-            tb->bookStartEdit->SetText(fmt("%d", bookModel ? bookModel->bookStartPage : kDefaultBookStartPage));
+            tb->bookStartEdit->SetText(bookModel ? bookModel->GetPageLabeTemp(bookModel->CurrentPageNo()) : StrL(""));
         }
     }
     if (win->chapterEdit && win->chapterEdit->GetVisibility() != chapterVis) {
@@ -773,7 +773,7 @@ void UpdateToolbarPageText(MainWindow* win, int pageCount, bool updateOnly) {
         if (dm) {
             logical = dm->LogicalPageCount();
         }
-        if (logical > 0 && (logical != pageCount || (dm && dm->bookStartPage != kDefaultBookStartPage))) {
+        if (logical > 0 && (logical != pageCount || (dm && dm->bookPageNumbers))) {
             txt = fmt(" / %d (%d / %d)", logical, win->ctrl->CurrentPageNo(), pageCount);
         } else {
             txt = fmt("%d / %d", win->ctrl->CurrentPageNo(), pageCount);
@@ -2656,12 +2656,14 @@ static void BuildToolbarLayout(MainWindow* win) {
             tb->pageTotal = total;
             box->AddChild(total);
 
-            auto* bookLabel = new VirtText(Tr("Book 1 at:"), tb->platformFont);
+            auto* bookLabel = new VirtText(Tr("Set page:"), tb->platformFont);
             bookLabel->isRtl = box->rtl;
             bookLabel->SetColor(kColText, fg);
             bookLabel->padding = {0, pageGap, 0, DpiScale(4)};
             bookLabel->id = PageInfoId;
-            bookLabel->SetTooltip(Tr("File page for book page 1 (default: 1). Press Enter to apply."));
+            bookLabel->SetTooltip(
+                Tr("Enter the printed number of the page shown, then press Enter. Clear and press Enter to restore PDF "
+                   "labels."));
             tb->bookStartLabel = bookLabel;
             box->AddChild(bookLabel);
             tb->bookStartEdit = ToolbarCreateBookStart(win, tb->platformFont, tb->iconSize);
@@ -3006,16 +3008,16 @@ static void OnBookStartChar(MainWindow* win, Edit::CharEvent* ev) {
         return;
     }
     if ((Key)ev->c == Key::Enter) {
-        int start = 0;
+        int pageNo = 0;
         Str text = tb->bookStartEdit->GetTextTemp();
-        if (str::IsNull(str::Parse(text, "%d%$", &start)) || start > dm->PageCount() ||
-            (start != 0 && (i64)dm->PageCount() - start + 1 > INT_MAX)) {
+        if (len(text) == 0) {
+            dm->SetBookStartPage(kDefaultBookStartPage);
+        } else if (str::IsNull(str::Parse(text, "%d%$", &pageNo)) || !dm->SetBookPageNumber(pageNo)) {
             MessageBeep(MB_ICONWARNING);
             EditSelectAll(tb->bookStartEdit);
             ev->didHandle = true;
             return;
         }
-        dm->SetBookStartPage(start);
         ScheduleSaveSettings();
         if (win->pageEdit) {
             win->pageEdit->SetText(dm->GetPageLabeTemp(dm->CurrentPageNo()));
@@ -3030,7 +3032,7 @@ static void OnBookStartChar(MainWindow* win, Edit::CharEvent* ev) {
     } else if ((Key)ev->c != Key::Escape) {
         return;
     }
-    tb->bookStartEdit->SetText(fmt("%d", dm->bookStartPage));
+    tb->bookStartEdit->SetText(dm->GetPageLabeTemp(dm->CurrentPageNo()));
     HwndSetFocus(win->hwndFrame);
     UpdateOverlayToolbarForMouse(win);
     ev->didHandle = true;
@@ -3040,6 +3042,8 @@ Edit* ToolbarCreateBookStart(MainWindow* win, PlatformFont* font, int iconDy) {
     Edit* edit = ToolbarCreateLocationEdit(win, font, iconDy);
     EditSetNumbersOnly(edit, false);
     edit->onChar = MkFunc1(OnBookStartChar, win);
+    edit->SetTooltip(Tr(
+        "Enter the printed number of the page shown, then press Enter. Clear and press Enter to restore PDF labels."));
     return edit;
 }
 

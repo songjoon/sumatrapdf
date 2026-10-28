@@ -255,6 +255,8 @@ struct FileEBookUI {
 
 // information about opened files (in most recently used order)
 struct FileState {
+    // use assigned book page numbers, including starts at 0 or 1
+    bool bookPageNumbers;
     // pages of this document bookmarked in the Favorites menu
     Vec<Favorite*>* favorites;
     // reflowable (ebook) settings for just this document. The block is
@@ -302,7 +304,7 @@ struct FileState {
     // number of pages in the document when it was last open; 0 if unknown.
     // Used to show reading progress on the home page
     int pageCount;
-    // file page corresponding to book page 1; 1 uses document page labels
+    // file page corresponding to book page 1
     int bookStartPage;
     // how far pages have been rotated as a multiple of 90 degrees
     int rotation;
@@ -358,8 +360,10 @@ struct TabState {
     Str filePath;
     // layout of pages in this tab
     Str displayMode;
-    // file page corresponding to book page 1; 1 uses document page labels
+    // file page corresponding to book page 1
     int bookStartPage;
+    // use assigned book page numbers, including starts at 0 or 1
+    bool bookPageNumbers;
     // number of the last read page, or `bm:<bookmark>` for documents with
     // chapters (see PagePosition.cpp)
     Str pageNo;
@@ -1331,7 +1335,7 @@ struct FieldInfo;
 struct StructInfo;
 extern const StructInfo gFavoriteInfo;
 extern const StructInfo gFileEBookUIInfo;
-extern const FieldInfo gFileStateFields[29];
+extern const FieldInfo gFileStateFields[30];
 extern StructInfo gFileStateInfo;
 extern const StructInfo gTabStateInfo;
 extern const StructInfo gSessionDataInfo;

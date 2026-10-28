@@ -1,7 +1,7 @@
 name: Fork Windows build
 on:
   push:
-    branches: [codex/ad-free-book-pages]
+    branches: [main, "codex/**"]
   workflow_dispatch:
 permissions:
   contents: read

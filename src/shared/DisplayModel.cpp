@@ -149,18 +149,18 @@ void DisplayModel::CreateThumbnail(Size size, const OnBitmapRendered* saveThumbn
 
 // page labels (optional)
 bool DisplayModel::HasPageLabels() const {
-    return bookStartPage != kDefaultBookStartPage || engine->hasPageLabels;
+    return bookPageNumbers || engine->hasPageLabels;
 }
 
 TempStr DisplayModel::GetPageLabeTemp(int pageNo) const {
-    if (bookStartPage != kDefaultBookStartPage) {
+    if (bookPageNumbers) {
         return fmt("%d", pageNo - bookStartPage + 1);
     }
     return engine->GetPageLabeTemp(pageNo);
 }
 
 int DisplayModel::GetPageByLabel(Str label) const {
-    if (bookStartPage != kDefaultBookStartPage) {
+    if (bookPageNumbers) {
         int bookPage = 0;
         if (str::IsNull(str::Parse(label, "%d%$", &bookPage))) {
             return 0;
@@ -172,18 +172,28 @@ int DisplayModel::GetPageByLabel(Str label) const {
 }
 
 // Book page 1 can follow covers and front matter; physical navigation stays unchanged.
-void DisplayModel::SetBookStartPage(int pageNo) {
-    if (pageNo == 0) {
+void DisplayModel::SetBookStartPage(int pageNo, BookPageMode mode) {
+    if (pageNo == 0 && mode == BookPageMode::Automatic) {
         pageNo = kDefaultBookStartPage;
     }
     i64 lastBookPage = (i64)engine->PageCount() - pageNo + 1;
-    bookStartPage = !engine->HasChapters() && pageNo <= engine->PageCount() && lastBookPage <= INT_MAX
-                        ? pageNo
-                        : kDefaultBookStartPage;
+    bool valid = !engine->HasChapters() && pageNo <= engine->PageCount() && lastBookPage <= INT_MAX;
+    bookStartPage = valid ? pageNo : kDefaultBookStartPage;
+    bookPageNumbers = valid && (mode == BookPageMode::Numbered || pageNo != kDefaultBookStartPage);
+}
+
+// Assign the printed number without moving the page the user is looking at.
+bool DisplayModel::SetBookPageNumber(int pageNo) {
+    i64 start = (i64)CurrentPageNo() - pageNo + 1;
+    if (start < INT_MIN || start > PageCount() || (i64)PageCount() - start + 1 > INT_MAX) {
+        return false;
+    }
+    SetBookStartPage((int)start, BookPageMode::Numbered);
+    return bookPageNumbers;
 }
 
 int DisplayModel::LogicalPageCount() const {
-    if (bookStartPage != kDefaultBookStartPage) {
+    if (bookPageNumbers) {
         return PageCount() - bookStartPage + 1;
     }
     if (!engine) {
@@ -675,6 +685,7 @@ void DisplayModel::GetDisplayState(FileState* fs) {
     str::ReplaceWithCopy(&fs->pageNo, StoredPagePosForPageTemp(this, ss.page));
     fs->pageCount = PageCount();
     fs->bookStartPage = bookStartPage;
+    fs->bookPageNumbers = bookPageNumbers;
     fs->scrollPos = PointF();
     if (!inPresentation) {
         fs->scrollPos = PointF((float)ss.x, (float)ss.y);

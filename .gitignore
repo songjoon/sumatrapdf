@@ -19,6 +19,9 @@ tools/pdfjs/coverage/
 cppcheck.out.txt
 clangtidy.out.txt
 node_modules
+.env
+.env.*
+!.env.example
 
 .claude/settings.local.json
 .playwright-mcp/
