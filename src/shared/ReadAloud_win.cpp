@@ -20,6 +20,7 @@
 #include "AppSettings.h"
 #include "DocController.h"
 #include "EngineBase.h"
+#include "OpenAiTts.h"
 #include "ReadAloud.h"
 
 #include "SumatraLog.h"
@@ -42,7 +43,8 @@ that we don't import them statically (the exe must still load on Windows 7).
 enum class TtsBackend {
     Unknown,
     WinRt,
-    Sapi
+    Sapi,
+    OpenAi
 };
 static TtsBackend gTtsBackend = TtsBackend::Unknown;
 
@@ -54,10 +56,19 @@ static bool gTtsQueuedStarted = false;
 static WStr gTtsSpokenText;
 
 static Str gTtsVoiceId;
+static bool gOpenAiQueued = false;
+
+static Str OpenAiVoice() {
+    if (str::StartsWith(gTtsVoiceId, StrL("openai:"))) {
+        return Str(gTtsVoiceId.s + 7, len(gTtsVoiceId) - 7);
+    }
+    return StrL("marin");
+}
 
 // playback speed multiplier, 1.0 is normal speed
 constexpr float kTtsSpeedMin = 0.5f;
 constexpr float kTtsSpeedMax = 3.0f;
+constexpr float kOpenAiSpeedMax = 1.5f;
 static float gTtsSpeed = 1.0f;
 
 static HWND gTtsNotifyHwnd = nullptr;
@@ -1449,7 +1460,9 @@ void TtsSetNotifyWindow(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
 
 static bool IsWinRtBackend() {
     if (gTtsBackend == TtsBackend::Unknown) {
-        if (!TtsForceSapi() && WinTtsInit()) {
+        if (!TtsForceSapi() && OpenAiTtsConfigured()) {
+            gTtsBackend = TtsBackend::OpenAi;
+        } else if (!TtsForceSapi() && WinTtsInit()) {
             gTtsBackend = TtsBackend::WinRt;
         } else {
             gTtsBackend = TtsBackend::Sapi;
@@ -1458,7 +1471,62 @@ static bool IsWinRtBackend() {
     return gTtsBackend == TtsBackend::WinRt;
 }
 
+float TtsSpeedLimit() {
+    bool openAi = gTtsBackend == TtsBackend::OpenAi ||
+                  (gTtsBackend == TtsBackend::Unknown && !TtsForceSapi() && OpenAiTtsConfigured());
+    return openAi ? kOpenAiSpeedMax : kTtsSpeedMax;
+}
+
+static void OpenAiProcessEvents() {
+    Str wav;
+    Str error;
+    OpenAiPoll state = OpenAiTtsPoll(&wav, &error);
+    if (state == OpenAiPoll::Failed) {
+        WinTtsStop();
+        gTtsActive = false;
+        if (gReadAloudSourceTab) {
+            ReadAloudShowNotif(gReadAloudSourceTab,
+                               fmt("OpenAI speech failed (%s). Check the API key, billing and connection.", error));
+            ReadAloudStopRememberPos();
+        }
+        str::Free(error);
+        TtsPostNotifyMsg();
+        return;
+    }
+    str::Free(error);
+    if (state == OpenAiPoll::Ready) {
+        if (gOpenAiQueued) {
+            gWinQueuedWav = (u8*)wav.s;
+            gWinQueuedWavSize = (DWORD)len(wav);
+            if (!gWinWaveOut && !gWinVirtualPlay) {
+                gTtsActive = WinTtsPlayQueued();
+            }
+        } else {
+            gWinWavData = (u8*)wav.s;
+            gWinWaveHdr.dwBufferLength = (DWORD)len(wav);
+            gTtsActive = WinTtsStartPlayback();
+        }
+        TtsPostNotifyMsg();
+    }
+    bool done = InterlockedCompareExchange(&gWinWaveDone, 0, 1) == 1;
+    done = done || (gWinVirtualPlay && WinTtsClockMs() >= gWinPlayDurationMs);
+    if (!done) {
+        return;
+    }
+    WinTtsStopPlayback();
+    if (gWinQueuedWav) {
+        gTtsActive = WinTtsPlayQueued();
+    } else {
+        gTtsActive = OpenAiTtsPending();
+    }
+    TtsPostNotifyMsg();
+}
+
 void TtsProcessEvents() {
+    if (gTtsBackend == TtsBackend::OpenAi) {
+        OpenAiProcessEvents();
+        return;
+    }
     if (gTtsBackend == TtsBackend::WinRt) {
         WinTtsProcessEvents();
     } else {
@@ -1515,7 +1583,18 @@ bool TtsSpeakUtf8(Str text) {
 
     gTtsQueuedStarted = false;
 
-    bool ok = IsWinRtBackend() ? WinTtsSpeak(textW) : SapiSpeak(textW);
+    bool winRt = IsWinRtBackend();
+    bool ok;
+    if (gTtsBackend == TtsBackend::OpenAi) {
+        OpenAiTtsStop();
+        WinTtsStop();
+        gTtsActive = false;
+        gOpenAiQueued = false;
+        gTtsSpeed = ClampF(gTtsSpeed, kTtsSpeedMin, kOpenAiSpeedMax);
+        ok = OpenAiTtsStart(text, OpenAiVoice(), gTtsSpeed);
+    } else {
+        ok = winRt ? WinTtsSpeak(textW) : SapiSpeak(textW);
+    }
     if (!ok) {
         dbgtts("speak failed utf8=%d\n", text.len);
         return false;
@@ -1539,6 +1618,17 @@ bool TtsQueueUtf8(Str text) {
         return false;
     }
 
+    if (gTtsBackend == TtsBackend::OpenAi) {
+        if (OpenAiTtsPending() || gWinQueuedWav) {
+            return false;
+        }
+        if (!OpenAiTtsStart(text, OpenAiVoice(), ClampF(gTtsSpeed, kTtsSpeedMin, kOpenAiSpeedMax))) {
+            return false;
+        }
+        gOpenAiQueued = true;
+        gWinQueuedText = wstr::Dup(textW);
+        return true;
+    }
     bool ok = IsWinRtBackend() ? WinTtsQueue(textW) : SapiQueue(textW);
     dbgtts("queue %s utf8=%d\n", ok ? StrL("ok") : StrL("fail"), text.len);
     return ok;
@@ -1559,6 +1649,19 @@ bool TtsIsSpeaking() {
 // to TtsSpeakUtf8, -1 if not known
 int TtsGetSpokenPosUtf8() {
     int wpos = gTtsBackend == TtsBackend::WinRt ? WinTtsLastWordPosWide() : (int)gSapiLastWordPos;
+    if (gTtsBackend == TtsBackend::OpenAi) {
+        if ((!gWinWaveOut && !gWinVirtualPlay) || !gWinPlayDurationMs) {
+            return -1;
+        }
+        // Realtime has no word timestamps; estimate progress within the current chunk.
+        wpos = (int)((u64)WinTtsClockMs() * len(gTtsSpokenText) / gWinPlayDurationMs);
+        if (wpos > len(gTtsSpokenText)) {
+            wpos = len(gTtsSpokenText);
+        }
+        if (wpos > 0 && wpos < len(gTtsSpokenText) && IS_LOW_SURROGATE(gTtsSpokenText.s[wpos])) {
+            wpos--;
+        }
+    }
 
     if (!gTtsSpokenText.s || wpos < 0) {
         return -1;
@@ -1575,7 +1678,10 @@ int TtsGetSpokenPosUtf8() {
 
 void TtsStop() {
     dbgtts("stop active=%d\n", (int)gTtsActive);
-    if (gTtsBackend == TtsBackend::WinRt) {
+    if (gTtsBackend == TtsBackend::OpenAi) {
+        OpenAiTtsStop();
+        WinTtsStop();
+    } else if (gTtsBackend == TtsBackend::WinRt) {
         WinTtsStop();
     } else {
         SapiStop();
@@ -1587,6 +1693,11 @@ void TtsStop() {
 // WinRT OneCore plus SAPI. Same token id once.
 Vec<TtsVoiceInfo> TtsGetVoices() {
     Vec<TtsVoiceInfo> voices;
+    const Str openAiVoices[] = {StrL("marin"), StrL("cedar"), StrL("coral")};
+    for (Str name : openAiVoices) {
+        VecAppend(voices, TtsVoiceInfo{str::Dup(fmt("openai:%s", name)), str::Dup(fmt("OpenAI %s (AI)", name)),
+                                       str::Dup(StrL("mul"))});
+    }
     if (!TtsForceSapi()) {
         WinTtsGetVoices(voices);
     }
@@ -1614,7 +1725,11 @@ bool TtsSetVoiceById(Str voiceId) {
     TtsBackend next = TtsBackend::Unknown;
     bool ok = false;
 
-    if (!TtsForceSapi() && WinTtsInit() && WinTtsSetVoiceById(voiceId)) {
+    if (str::Eq(voiceId, StrL("openai:marin")) || str::Eq(voiceId, StrL("openai:cedar")) ||
+        str::Eq(voiceId, StrL("openai:coral")) || (len(voiceId) == 0 && !TtsForceSapi() && OpenAiTtsConfigured())) {
+        next = TtsBackend::OpenAi;
+        ok = true;
+    } else if (!TtsForceSapi() && WinTtsInit() && WinTtsSetVoiceById(voiceId)) {
         next = TtsBackend::WinRt;
         ok = true;
     } else if (SapiSetVoiceById(voiceId)) {
@@ -1626,7 +1741,10 @@ bool TtsSetVoiceById(Str voiceId) {
     }
 
     if (prev != TtsBackend::Unknown && prev != next) {
-        if (prev == TtsBackend::WinRt) {
+        if (prev == TtsBackend::OpenAi) {
+            OpenAiTtsStop();
+            WinTtsStop();
+        } else if (prev == TtsBackend::WinRt) {
             WinTtsStop();
         } else {
             SapiStop();
@@ -1644,7 +1762,7 @@ Str TtsGetVoiceId() {
 
 // WinRT applies the new speed on the next chunk. SAPI adjusts speech in progress.
 void TtsSetSpeed(float speed) {
-    speed = ClampF(speed, kTtsSpeedMin, kTtsSpeedMax);
+    speed = ClampF(speed, kTtsSpeedMin, TtsSpeedLimit());
     gTtsSpeed = speed;
 
     WinTtsApplySpeed();
@@ -1668,6 +1786,7 @@ void TtsRelease() {
 #if defined(SUMATRA_NG)
     ReadAloudFreeVoiceCache();
 #endif
+    OpenAiTtsStop();
     WinTtsRelease();
     SapiRelease();
 

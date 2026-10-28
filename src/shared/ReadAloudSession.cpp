@@ -774,14 +774,20 @@ TempStr ReadAloudSpeedLabelTemp(float speed) {
 }
 
 int ReadAloudSpeedCount() {
-    return dimofi(kReadAloudSpeeds);
+    int count = dimofi(kReadAloudSpeeds);
+#if OS_WIN
+    while (count > 1 && kReadAloudSpeeds[count - 1] > TtsSpeedLimit()) {
+        count--;
+    }
+#endif
+    return count;
 }
 
 int ReadAloudClosestSpeedIdx() {
     float curr = TtsGetSpeed();
     int idx = 0;
     float bestDist = -1;
-    for (int i = 0; i < dimofi(kReadAloudSpeeds); i++) {
+    for (int i = 0; i < ReadAloudSpeedCount(); i++) {
         float dist = kReadAloudSpeeds[i] - curr;
         if (dist < 0) {
             dist = -dist;
@@ -800,7 +806,7 @@ void ReadAloudSetSpeedIdx(int idx) {
 }
 
 void ReadAloudPlaybackCycleSpeed(int dir) {
-    int n = dimofi(kReadAloudSpeeds);
+    int n = ReadAloudSpeedCount();
     int idx = (ReadAloudClosestSpeedIdx() + dir + n) % n;
     ReadAloudSetSpeed(kReadAloudSpeeds[idx]);
 }

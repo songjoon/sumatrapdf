@@ -18,6 +18,12 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
       - name: Build Windows release
         run: bun cmd/build.ts -rel
+      - name: Check OpenAI speech protocol
+        run: bun --no-env-file tests/ad-hoc-openai-tts.ts --helper out/rel64/OpenAiTts.exe
+      - name: Check native OpenAI Read Aloud
+        env:
+          SUMATRA_TEST_EXE: ${{ github.workspace }}\out\rel64\SumatraPDF.exe
+        run: bun --no-env-file tests/ad-hoc-openai-read-aloud.ts --no-build
       - name: Check book page navigation
         shell: pwsh
         env:
@@ -28,6 +34,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
       - name: Upload Windows build
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: SumatraPDF-fork-windows-x64

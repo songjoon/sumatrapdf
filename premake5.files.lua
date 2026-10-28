@@ -399,6 +399,8 @@ function sumatrapdf_files()
     "ReadAloudHighlight.*",
     "ReadAloudSession.*",
     "ReadAloud_win.*",
+    "OpenAiTts.h",
+    "OpenAiTts_win.*",
     "ReadingAutoScroll.*",
     "ReadingAutoScrollCommon.*",
     "ReadingBar.*",

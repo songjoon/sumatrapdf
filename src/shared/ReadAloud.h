@@ -40,6 +40,7 @@ int TtsGetSpokenPosUtf8();
 
 #if !defined(SUMATRA_NG) || OS_WIN
 void TtsSetNotifyWindow(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
+float TtsSpeedLimit();
 #endif
 void TtsProcessEvents();
 

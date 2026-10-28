@@ -5,6 +5,7 @@ import { $ } from "bun";
 import { clearDirPreserveSettings } from "./clean";
 import { ensureNinja, ninjaDir, ninjaToRoot } from "./ninja";
 import { detectVisualStudio2026, runLogged } from "./util";
+import { buildOpenAiTts } from "./helper/openai-tts-build";
 
 type BuildMode = "windows" | "all" | "smoke" | "ci" | "daily" | "codeql" | "build-no";
 type Config = "debug" | "release" | "profile";
@@ -199,6 +200,7 @@ async function buildWindows(config: Config, win32: boolean, clean: boolean, ninj
     const { msbuildPath } = detectVisualStudio2026();
     await buildApp(msbuildPath, configName, platform, "SumatraPDF");
   }
+  await buildOpenAiTts(outDir);
   printBinaries(outDir, new Set(["SumatraPDF.exe"]));
 }
 
@@ -280,6 +282,7 @@ async function buildWindowsAsan(config: Config, clean: boolean, ninja: boolean):
       "/m",
     ]);
   }
+  await buildOpenAiTts(outDir);
   printBinaries(outDir, new Set(["SumatraPDF-static.exe"]));
   copyFileSync(findAsanDll(vsRoot), join(outDir, asanDllName));
   console.log(`exe: ${join(outDir, "SumatraPDF-static.exe")}`);
@@ -301,6 +304,7 @@ async function buildAll(clean: boolean, ninja: boolean): Promise<void> {
       "/m",
     ]);
   }
+  await buildOpenAiTts(outDir);
   printBinaries(outDir, new Set(["SumatraPDF.exe", "SumatraPDF-static.exe"]));
 }
 
